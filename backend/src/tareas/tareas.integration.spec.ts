@@ -81,4 +81,26 @@ describe('Tareas HTTP', () => {
       .send({ titulo: 'No importa' })
       .expect(404);
   });
+
+  it('DELETE /tareas/:id elimina una tarea existente', async () => {
+    query.mockResolvedValue({
+      rows: [{ id: 1, titulo: 'Tarea eliminada' }],
+    });
+
+    await request(app.getHttpServer())
+      .delete('/tareas/1')
+      .expect(200)
+      .expect({ id: 1, titulo: 'Tarea eliminada' });
+
+    expect(query).toHaveBeenCalledWith(
+      'DELETE FROM tareas WHERE id = $1 RETURNING id, titulo',
+      [1],
+    );
+  });
+
+  it('DELETE /tareas/:id responde 404 si la tarea no existe', async () => {
+    query.mockResolvedValue({ rows: [] });
+
+    await request(app.getHttpServer()).delete('/tareas/999').expect(404);
+  });
 });
