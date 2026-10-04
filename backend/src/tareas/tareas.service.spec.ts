@@ -52,4 +52,15 @@ describe('TareasService', () => {
       ['Título editado', 1],
     );
   });
+
+  it('elimina la tarea y devuelve la fila eliminada', async () => {
+    const eliminada = { id: 1, titulo: 'Tarea eliminada' };
+    query.mockResolvedValue({ rows: [eliminada] });
+
+    await expect(service.eliminar(1)).resolves.toEqual(eliminada);
+    expect(query).toHaveBeenCalledWith(
+      'DELETE FROM tareas WHERE id = $1 RETURNING id, titulo',
+      [1],
+    );
+  });
 });
