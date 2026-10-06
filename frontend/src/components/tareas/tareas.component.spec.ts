@@ -57,3 +57,72 @@ describe('TareasComponent', () => {
     ]);
   });
 });
+describe('TareasComponent editar y eliminar', () => {
+  let fixture: ComponentFixture<TareasComponent>;
+  let tareasService: jasmine.SpyObj<TareasService>;
+  let elemento: HTMLElement;
+
+  const iniciales: Tarea[] = [
+    { id: 1, titulo: 'Primera tarea' },
+    { id: 2, titulo: 'Segunda tarea' },
+  ];
+
+  const boton = (texto: string): HTMLButtonElement =>
+    Array.from(elemento.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === texto,
+    )!;
+
+  const titulos = (): (string | null)[] =>
+    Array.from(elemento.querySelectorAll('.titulo')).map(
+      (nodo) => nodo.textContent,
+    );
+
+  beforeEach(async () => {
+    tareasService = jasmine.createSpyObj('TareasService', [
+      'listar',
+      'crear',
+      'actualizar',
+      'eliminar',
+    ]);
+    tareasService.listar.and.returnValue(of(iniciales));
+
+    await TestBed.configureTestingModule({
+      imports: [TareasComponent],
+      providers: [{ provide: TareasService, useValue: tareasService }],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(TareasComponent);
+    elemento = fixture.nativeElement;
+    fixture.detectChanges();
+  });
+
+  it('edita el título de una tarea con Editar y Guardar', () => {
+    tareasService.actualizar.and.returnValue(
+      of({ id: 1, titulo: 'Título editado' }),
+    );
+
+    boton('Editar').click();
+    fixture.detectChanges();
+
+    const campo = elemento.querySelector<HTMLInputElement>('input.edicion');
+    expect(campo).not.toBeNull();
+    campo!.value = 'Título editado';
+    boton('Guardar').click();
+    fixture.detectChanges();
+
+    expect(tareasService.actualizar).toHaveBeenCalledWith(1, 'Título editado');
+    expect(titulos()).toEqual(['Título editado', 'Segunda tarea']);
+  });
+
+  it('elimina una tarea con Eliminar y deja las demás', () => {
+    tareasService.eliminar.and.returnValue(
+      of({ id: 1, titulo: 'Primera tarea' }),
+    );
+
+    boton('Eliminar').click();
+    fixture.detectChanges();
+
+    expect(tareasService.eliminar).toHaveBeenCalledWith(1);
+    expect(titulos()).toEqual(['Segunda tarea']);
+  });
+});
