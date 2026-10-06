@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Tarea } from './tarea.model';
 import { TareasComponent } from './tareas.component';
 import { TareasService } from './tareas.service';
@@ -107,4 +108,51 @@ describe('TareasComponent', () => {
     expect(titulos).toEqual(['Titulo devuelto por backend', 'Estudiar para el examen'
     ]);
   });
+
+  it('quita la tarea de la lista cuando eliminar responde 404', () => {
+    tareasService.listar.and.returnValue(of(dosTareas));
+    tareasService.eliminar.and.returnValue(
+      throwError(() => new HttpErrorResponse({ status: 404 })),
+    );
+    fixture = TestBed.createComponent(TareasComponent);
+    fixture.detectChanges();
+
+    const elemento: HTMLElement = fixture.nativeElement;
+    const fila = elemento.querySelector('li')!;
+    boton(fila, 'Eliminar')!.click();
+    fixture.detectChanges();
+
+    expect(tareasService.eliminar).toHaveBeenCalledWith(3);
+    const titulos = Array.from(elemento.querySelectorAll('.titulo')).map(
+      (nodo) => nodo.textContent);
+    expect(titulos).toEqual(['Estudiar para el examen'
+    ]);
+  });
+
+  it('quita la tarea de la lista cuando guardar responde 404', () => {
+    tareasService.listar.and.returnValue(of(dosTareas));
+    tareasService.actualizar.and.returnValue(
+      throwError(() => new HttpErrorResponse({ status: 404 })),
+    );
+    fixture = TestBed.createComponent(TareasComponent);
+    fixture.detectChanges();
+
+    const elemento: HTMLElement = fixture.nativeElement;
+    const fila = elemento.querySelector('li')!;
+    boton(fila, 'Editar')!.click();
+    fixture.detectChanges();
+    const input = fila.querySelector('input') as HTMLInputElement;
+    input.value = 'Hacer el taller de desarrollo actualizado';
+    boton(fila, 'Guardar')!.click();
+    fixture.detectChanges();
+
+    expect(tareasService.actualizar).toHaveBeenCalledWith(3, 'Hacer el taller de desarrollo actualizado');
+    const titulos = Array.from(elemento.querySelectorAll('.titulo')).map(
+      (nodo) => nodo.textContent);
+    expect(titulos).toEqual(['Estudiar para el examen'
+    ]);
+    expect(elemento.querySelector('li input')).toBeNull();
+    expect(fixture.componentInstance.estadoEdicion()).toBeNull();
+  });
+
 });

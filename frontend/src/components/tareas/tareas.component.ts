@@ -24,17 +24,32 @@ export class TareasComponent implements OnInit {
     });
   }
   eliminar(id: number) {
-  this.tareasService.eliminar(id).subscribe(() => {
-    this.tareas.update((tareas) => [...tareas].filter((tarea) => tarea.id !== id));
+  this.tareasService.eliminar(id).subscribe({
+    next: () => {
+      this.tareas.update((tareas) => [...tareas].filter((tarea) => tarea.id !== id));
+    },
+    error: (err) => {
+      if (err.status === 404) {
+        this.tareas.update((tareas) => [...tareas].filter((tarea) => tarea.id !== id));
+      }
+    },
   });
   }
   editar(id:number){
     this.estadoEdicion.set(id);
   }
   guardar(id:number, titulo:string){
-    this.tareasService.actualizar(id, titulo).subscribe((tarea) => {
-      this.tareas.update((tareas) => [...tareas].map((t) => (t.id === id ? tarea : t)));
-      this.estadoEdicion.set(null);
+    this.tareasService.actualizar(id, titulo).subscribe({
+      next: (tarea) => {
+        this.tareas.update((tareas) => [...tareas].map((t) => (t.id === id ? tarea : t)));
+        this.estadoEdicion.set(null);
+      },
+      error: (err) => {
+        if (err.status === 404) {
+          this.tareas.update((tareas) => [...tareas].filter((tarea) => tarea.id !== id));
+          this.estadoEdicion.set(null);
+        }
+      },
     });
   }
 }
