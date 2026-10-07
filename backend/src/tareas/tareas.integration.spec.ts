@@ -1,0 +1,114 @@
+import { INestApplication } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import request from 'supertest';
+import { DatabaseService } from '../database/database.service';
+import { TareasController } from './tareas.controller';
+import { TareasService } from './tareas.service';
+
+describe('Tareas HTTP', () => {
+  let app: INestApplication;
+  const query = jest.fn();
+
+  beforeEach(async () => {
+    query.mockReset();
+
+    const module = await Test.createTestingModule({
+      controllers: [TareasController],
+      providers: [
+        TareasService,
+        { provide: DatabaseService, useValue: { query } },
+      ],
+    }).compile();
+
+    app = module.createNestApplication();
+    await app.init();
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  it('GET /tareas responde las filas que devuelve la base', async () => {
+    query.mockResolvedValue({
+      rows: [{ id: 1, titulo: 'Leer la guía de la clase 2' }],
+    });
+
+    await request(app.getHttpServer())
+      .get('/tareas')
+      .expect(200)
+      .expect([{ id: 1, titulo: 'Leer la guía de la clase 2' }]);
+  });
+
+  it('POST /tareas guarda el título recibido en el cuerpo', async () => {
+    query.mockResolvedValue({
+      rows: [{ id: 3, titulo: 'Preparar el entorno' }],
+    });
+
+    await request(app.getHttpServer())
+      .post('/tareas')
+      .send({ titulo: 'Preparar el entorno' })
+      .expect(201)
+      .expect({ id: 3, titulo: 'Preparar el entorno' });
+
+    expect(query).toHaveBeenCalledWith(
+      'INSERT INTO tareas (titulo) VALUES ($1) RETURNING id, titulo',
+      ['Preparar el entorno'],
+    );
+  });
+it('PATCH /tareas/:id actualiza el título y responde la tarea', async () => {
+    query.mockResolvedValue({
+      rows: [{ id: 1, titulo: 'Título nuevo' }],
+    });
+
+    await request(app.getHttpServer())
+      .patch('/tareas/1')
+      .send({ titulo: 'Título nuevo' })
+      .expect(200)
+      .expect({ id: 1, titulo: 'Título nuevo' });
+
+    expect(query).toHaveBeenCalledWith(
+      'UPDATE tareas SET titulo = $1 WHERE id = $2 RETURNING id, titulo',
+      ['Título nuevo', 1],
+    );
+  });
+
+  it('PATCH /tareas/:id responde 404 si la tarea no existe', async () => {
+    query.mockResolvedValue({ rows: [] });
+
+    await request(app.getHttpServer())
+      .patch('/tareas/999')
+      .send({ titulo: 'No existe' })
+      .expect(404);
+
+    expect(query).toHaveBeenCalledWith(
+      'UPDATE tareas SET titulo = $1 WHERE id = $2 RETURNING id, titulo',
+      ['No existe', 999],
+    );
+  });
+   it('DELETE /tareas/:id elimina la tarea y responde la fila eliminada', async () => {
+    query.mockResolvedValue({
+      rows: [{ id: 1, titulo: 'Tarea a borrar' }],
+    });
+
+    await request(app.getHttpServer())
+      .delete('/tareas/1')
+      .expect(200)
+      .expect({ id: 1, titulo: 'Tarea a borrar' });
+
+    expect(query).toHaveBeenCalledWith(
+      'DELETE FROM tareas WHERE id = $1 RETURNING id, titulo',
+      [1],
+    );
+  });
+
+  it('DELETE /tareas/:id responde 404 si la tarea no existe', async () => {
+    query.mockResolvedValue({ rows: [] });
+
+    await request(app.getHttpServer()).delete('/tareas/999').expect(404);
+
+    expect(query).toHaveBeenCalledWith(
+      'DELETE FROM tareas WHERE id = $1 RETURNING id, titulo',
+      [999],
+    );
+  });
+});
