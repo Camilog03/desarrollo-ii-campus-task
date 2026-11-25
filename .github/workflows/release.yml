@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']          
+
+permissions:
+  contents: write         
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Backend - pruebas y build
+        working-directory: backend
+        run: |
+          npm ci
+          npm test
+          npm run build
+
+      - name: Backend - version.json
+        working-directory: backend
+        run: |
+          jq -n --arg v "${GITHUB_REF_NAME#v}" --arg c "$GITHUB_SHA" --arg b "$GITHUB_RUN_NUMBER" \
+            '{version: $v, commit: $c, build: $b}' > version.json
+
+      - name: Frontend - pruebas y build
+        working-directory: frontend
+        run: |
+          npm ci
+          npm test -- --watch=false --browsers=ChromeHeadless
+          npm run build
+
+      - name: Empaquetar y calcular huellas
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          (cd backend && zip -r "../campustasks-backend-$V.zip" dist package.json package-lock.json version.json)
+          (cd frontend/dist && zip -r "../../campustasks-frontend-$V.zip" .)
+          sha256sum campustasks-*.zip > SHA256SUMS.txt
+
+      - name: Publicar el release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" campustasks-*.zip SHA256SUMS.txt \
+            --title "CampusTasks $GITHUB_REF_NAME" --generate-notes

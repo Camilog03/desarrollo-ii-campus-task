@@ -16,16 +16,20 @@
 
   <ul>
     @for (tarea of tareas(); track tarea.id) {
-    <li>
+    <li class="caja-tarea">
       <span class="numero">{{ tarea.id }}</span>
       @if (editandoId() === tarea.id) {
       <input type="text" class="edicion" [value]="tarea.titulo" #edicionInput />
-      <button (click)="guardar(tarea.id, edicionInput.value)">Guardar</button>
-      <button (click)="cancelar()">Cancelar</button>
+      <div class="caja-botones">
+        <button (click)="guardar(tarea.id, edicionInput.value)">Guardar</button>
+        <button (click)="cancelar()">Cancelar</button>
+      </div>
       } @else {
       <span class="titulo">{{ tarea.titulo }}</span>
-      <button (click)="editar(tarea.id)">Editar</button>
-      <button (click)="eliminar(tarea.id)">Eliminar</button>
+      <div class="caja-botones">
+        <button (click)="editar(tarea.id)">Editar</button>
+        <button (click)="eliminar(tarea.id)">Eliminar</button>
+      </div>
       }
     </li>
     }

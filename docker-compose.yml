@@ -1,0 +1,43 @@
+services:
+  db: 
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: campustasks
+      POSTGRES_PASSWORD: campustasks
+      POSTGRES_DB: campustasks
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U campustasks -d campustasks"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      args: 
+        VERSION: dev
+        COMMIT: local
+    ports:
+      - "3000:3000"
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: campustasks
+      DB_PASSWORD: campustasks
+      DB_NAME: campustasks
+    depends_on:
+      db:
+        condition: service_healthy
+  frontend:
+    build: ./frontend
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
+volumes:
+  pgdata:
